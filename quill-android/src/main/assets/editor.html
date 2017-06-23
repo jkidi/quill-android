@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Include Quill stylesheet -->
+    <link href="quill.snow.css" type="text/css" rel="stylesheet">
+    <link href="style.css" type="text/css" rel="stylesheet">
+</head>
+
+<body>
+
+
+<!--&lt;!&ndash; Create the toolbar container &ndash;&gt;-->
+<!--<div id="toolbar">-->
+    <!--<button class="ql-bold">Bold</button>-->
+    <!--<button class="ql-italic">Italic</button>-->
+<!--</div>-->
+
+<!-- Create the editor container -->
+<div id="editor">
+    <p><b>Hello World!</b> dupa</p>
+</div>
+
+<!-- Include the Quill library -->
+<script type="text/javascript" src="quill.js"></script>
+
+<!-- Initialize Quill editor -->
+<script>
+    var quill = new Quill('#editor', {
+        modules: { }
+    });
+
+    quill.on('selection-change', function(range, oldRange, source) {
+        if(range) {
+            Android.onSelectionChange(range.index, range.length, oldRange == null ? -1 : oldRange.index,
+                oldRange == null ? -1 : oldRange.length, source);
+        }
+    });
+
+    quill.on('text-change', function(delta, oldDelta, source) {
+        Android.onTextChange(delta, oldDelta, source);
+    });
+</script>
+
+</body>
+</html>
