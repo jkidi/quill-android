@@ -22,6 +22,7 @@ import android.support.annotation.DrawableRes;
 /** ToolbarRenderer interface
  * @author jkidi(Jakub Kidacki)
  */
+// TODO: Get rid of the whole renderer thing
 public interface ToolbarRenderer {
    @DrawableRes
    int getNormalState(Format format);

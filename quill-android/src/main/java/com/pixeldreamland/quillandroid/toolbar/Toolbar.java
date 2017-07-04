@@ -14,21 +14,28 @@
  * limitations under the License.
  */
 
-package com.pixeldreamland.quillandroid;
+package com.pixeldreamland.quillandroid.toolbar;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.view.View;
 import android.webkit.ValueCallback;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import com.pixeldreamland.quillandroid.*;
+import com.pixeldreamland.quillandroid.toolbar.defaults.BoldButton;
+import com.pixeldreamland.quillandroid.toolbar.defaults.ItalicButton;
+import com.pixeldreamland.quillandroid.toolbar.defaults.StrikeButton;
+import com.pixeldreamland.quillandroid.toolbar.defaults.UnderlineButton;
 
+import java.lang.reflect.Constructor;
 import java.util.HashMap;
 import java.util.Map;
 
 /** Toolbar
  * @author jkidi(Jakub Kidacki)
  */
-public class Toolbar extends LinearLayout implements ToolbarButton.OnValueChangedListener {
+public class Toolbar extends LinearLayout implements ToolbarElement.OnValueChangedListener {
    public static final Format[] ALL_TYPES = new Format[] {
       Format.BOLD,
       Format.ITALIC,
@@ -39,10 +46,11 @@ public class Toolbar extends LinearLayout implements ToolbarButton.OnValueChange
 
    private HorizontalScrollView scrollView;
    private LinearLayout containerLayout;
-
    private ToolbarRenderer renderer;
+
+   private Map<Format, Class<? extends ToolbarElement>> formatClassMap;
    private Format[] formats;
-   private Map<Format, ToggleToolbarButton> buttonMap;
+   private Map<Format, ToolbarElement> toolbarElementMap;
 
    private Editor editor;
 
@@ -67,7 +75,14 @@ public class Toolbar extends LinearLayout implements ToolbarButton.OnValueChange
       containerLayout = (LinearLayout) findViewById(R.id.containerLayout);
       setRenderer(new DefaultToolbarRenderer());
       formats = ALL_TYPES;
-      initButtons();
+
+      formatClassMap = new HashMap<>();
+      formatClassMap.put(Format.BOLD, BoldButton.class);
+      formatClassMap.put(Format.ITALIC, ItalicButton.class);
+      formatClassMap.put(Format.UNDERLINE, UnderlineButton.class);
+      formatClassMap.put(Format.STRIKE, StrikeButton.class);
+
+      initElements();
    }
 
    public ToolbarRenderer getRenderer() {
@@ -78,32 +93,47 @@ public class Toolbar extends LinearLayout implements ToolbarButton.OnValueChange
       this.renderer = renderer;
    }
 
-   private void initButtons() {
+   private void initElements() {
       containerLayout.removeAllViews();
-      buttonMap = new HashMap<>();
+      toolbarElementMap = new HashMap<>();
 
       for(Format format : formats) {
-         ToggleToolbarButton button = new ToggleToolbarButton(getContext());
-         button.setFormat(format);
-         button.setNormalState(renderer.getNormalState(format));
-         button.setCheckedState(renderer.getCheckedState(format));
-         button.setNormalColorFilter(renderer.getNormalColorFilter(format));
-         button.setCheckedColorFilter(renderer.getCheckedColorFilter(format));
-         button.setOnValueChangedListener(this);
-         containerLayout.addView(button);
-         buttonMap.put(format, button);
+         Class<? extends ToolbarElement> cls = formatClassMap.get(format);
+         ToolbarElement element;
+
+         try {
+            Constructor<? extends ToolbarElement> constructor = cls.getConstructor(Context.class);
+            element = constructor.newInstance(getContext());
+            element.setFormat(format);
+            element.setOnValueChangedListener(this);
+
+            // TODO: Get rid of the whole renderer thing
+            if(element instanceof ToolbarToggleButton) {
+               ToolbarToggleButton toggleButton = (ToolbarToggleButton) element;
+               toggleButton.setNormalState(renderer.getNormalState(format));
+               toggleButton.setCheckedState(renderer.getCheckedState(format));
+               toggleButton.setNormalColorFilter(renderer.getNormalColorFilter(format));
+               toggleButton.setCheckedColorFilter(renderer.getCheckedColorFilter(format));
+            }
+
+            containerLayout.addView((View) element);
+            toolbarElementMap.put(format, element);
+         }
+         catch(Exception e) {
+            e.printStackTrace();
+         }
       }
    }
 
    private void resetButtons() {
-      for(ToggleToolbarButton button : buttonMap.values()) {
-         button.setChecked(false, false);
+      for(ToolbarElement button : toolbarElementMap.values()) {
+         button.clear(false);
       }
    }
 
    @Override
-   public void onValueChanged(ToolbarButton toolbarButton, Object value) {
-      editor.format(toolbarButton.getFormat(), value, null);
+   public void onValueChanged(ToolbarElement toolbarElement, Object value) {
+      editor.format(toolbarElement.getFormat(), value, null);
    }
 
    public Editor getEditor() {
@@ -121,13 +151,11 @@ public class Toolbar extends LinearLayout implements ToolbarButton.OnValueChange
                   resetButtons();
 
                   for(Format format : formatSet.getFormats()) {
-                     buttonMap.get(format).setChecked((Boolean) formatSet.getValue(format));
+                     toolbarElementMap.get(format).setValue(formatSet.getValue(format), true);
                   }
                }
             });
          }
       });
    }
-
-
 }

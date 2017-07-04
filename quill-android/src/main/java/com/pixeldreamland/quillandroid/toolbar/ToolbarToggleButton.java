@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.pixeldreamland.quillandroid;
+package com.pixeldreamland.quillandroid.toolbar;
 
 import android.content.Context;
 import android.support.annotation.ColorInt;
@@ -22,31 +22,33 @@ import android.support.annotation.DrawableRes;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.widget.ImageButton;
+import com.pixeldreamland.quillandroid.Format;
 
-/** ToolbarImageButton
+/** Toggle button implementation that switches between two values
  * @author jkidi(Jakub Kidacki)
  */
-public class ToggleToolbarButton extends ImageButton implements ToolbarButton {
-   private Format format;
-   private boolean checked;
+public abstract class ToolbarToggleButton extends ImageButton implements ToolbarElement {
+   protected Format format;
+   protected Object value;
+   protected Object[] whitelistValues;
+   protected OnValueChangedListener onValueChangedListener;
 
    private @DrawableRes
    int normalState;
+
    private @DrawableRes
    int checkedState;
-
    private @ColorInt
    int normalColorFilter;
+
    private @ColorInt
    int checkedColorFilter;
 
-   private OnValueChangedListener onValueChangedListener;
-
-   public ToggleToolbarButton(Context context) {
+   public ToolbarToggleButton(Context context) {
       super(context);
    }
 
-   public ToggleToolbarButton(Context context, AttributeSet attrs) {
+   public ToolbarToggleButton(Context context, AttributeSet attrs) {
       super(context, attrs);
    }
 
@@ -62,12 +64,27 @@ public class ToggleToolbarButton extends ImageButton implements ToolbarButton {
 
    @Override
    public Object getValue() {
-      return checked;
+      return value;
    }
 
    @Override
-   public void setValue(Object value) {
-      checked = (boolean) value;
+   public void setValue(Object value, boolean emitEvent) {
+      this.value = value;
+      update();
+
+      if(onValueChangedListener != null && emitEvent) {
+         onValueChangedListener.onValueChanged(this, value);
+      }
+   }
+
+   @Override
+   public Object[] getWhitelistValues() {
+      return whitelistValues;
+   }
+
+   @Override
+   public void setWhitelistValues(Object[] whitelistValues) {
+      this.whitelistValues = whitelistValues;
    }
 
    public int getNormalState() {
@@ -111,29 +128,14 @@ public class ToggleToolbarButton extends ImageButton implements ToolbarButton {
       this.onValueChangedListener = onValueChangedListener;
    }
 
-   public void setChecked(boolean checked) {
-      setChecked(checked, true);
-   }
+   public abstract boolean isChecked();
 
-   public void setChecked(boolean checked, boolean emitEvent) {
-      this.checked = checked;
-      update();
+   public abstract void clear(boolean emitEvent);
 
-      if(onValueChangedListener != null && emitEvent) {
-         onValueChangedListener.onValueChanged(this, checked);
-      }
-   }
-
-   public boolean isChecked() {
-      return checked;
-   }
-
-   public void toggle() {
-      setChecked(!checked);
-   }
+   public abstract void toggle(boolean emitEvent);
 
    private void update() {
-      if(checked) {
+      if(isChecked()) {
          if(checkedState != 0) {
             setImageResource(checkedState);
          }
@@ -149,7 +151,7 @@ public class ToggleToolbarButton extends ImageButton implements ToolbarButton {
    @Override
    public boolean onTouchEvent(MotionEvent event) {
       if(event.getAction() == MotionEvent.ACTION_UP) {
-         this.toggle();
+         this.toggle(true);
       }
 
       return super.onTouchEvent(event);
