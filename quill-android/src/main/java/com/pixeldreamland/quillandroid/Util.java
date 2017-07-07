@@ -124,6 +124,23 @@ public class Util {
       else if(value instanceof Format) {
          return "'" + ((Format) value).getName() + "'";
       }
+      else if(value instanceof String[]) {
+         String[] strArr = (String[]) value;
+         String arg = "[";
+
+         for(int i = 0; i < strArr.length; i++) {
+            if(i == strArr.length - 1) {
+               arg += "'" + strArr[i] + "'";
+            }
+            else {
+               arg += "'" + strArr[i] + "',";
+            }
+         }
+
+         arg += "]";
+
+         return arg;
+      }
       else {
          return value.toString();
       }
@@ -141,5 +158,9 @@ public class Util {
       }
 
       return args;
+   }
+
+   public static boolean equals(Object a, Object b) {
+      return (a == b) || (a != null && a.equals(b));
    }
 }

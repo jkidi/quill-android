@@ -17,7 +17,7 @@
 
 <!-- Create the editor container -->
 <div id="editor">
-    <p><b>Hello World!</b> dupa</p>
+    <p><b>Hello World!</b></p>
 </div>
 
 <!-- Include the Quill library -->
@@ -25,6 +25,8 @@
 
 <!-- Initialize Quill editor -->
 <script>
+    var Font = Quill.import('formats/font');
+
     var quill = new Quill('#editor', {
         modules: { }
     });
@@ -41,6 +43,23 @@
         else {
             style.sheet.insertRule(name + "{" + rules + "}", 0);
         }
+    };
+
+    var registerFonts = function(fonts) {
+        for(var i = 0; i < fonts.length; i++) {
+            var fixedFontName = fonts[i].replace(/_/g, " ");
+
+            // first font will be the default
+            if(i == 0) {
+                createClass("#editor", "font-family: '" + fixedFontName + "';");
+            }
+            else {
+                createClass(".ql-font-" + fonts[i], "font-family: '" + fixedFontName + "';");
+            }
+        }
+
+        Font.whitelist = fonts;
+        Quill.register(Font, true);
     };
 
     quill.on('selection-change', function(range, oldRange, source) {

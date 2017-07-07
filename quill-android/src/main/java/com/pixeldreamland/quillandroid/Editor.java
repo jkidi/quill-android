@@ -24,6 +24,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** Editor
@@ -85,6 +86,7 @@ public class Editor extends WebView {
                   evaluateJavascript(trigger, resultCallback);
                }
                else {
+                  // TODO: add callback logic for version < KITKAT
                   loadUrl("javascript:" + trigger);
                }
             }
@@ -293,6 +295,10 @@ public class Editor extends WebView {
    public void removeFormat(int index, int length, String source, ValueCallback<JSONObject> resultCallback) {
       exec("quill.removeFormat(" + Util.getJavascriptArgs(index, length, source) + ");",
          new ParseJSResultCallback<>(resultCallback, JSONObject.class));
+   }
+
+   public void registerFonts(String[] fonts) {
+      exec("registerFonts(" + Util.toJavascriptArg(fonts) + ");", null);
    }
 
    public void addSelectionChangeListener(SelectionChangeListener selectionChangeListener) {

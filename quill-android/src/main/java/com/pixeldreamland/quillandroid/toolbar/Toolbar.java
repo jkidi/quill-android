@@ -23,34 +23,30 @@ import android.webkit.ValueCallback;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import com.pixeldreamland.quillandroid.*;
-import com.pixeldreamland.quillandroid.toolbar.defaults.BoldButton;
-import com.pixeldreamland.quillandroid.toolbar.defaults.ItalicButton;
-import com.pixeldreamland.quillandroid.toolbar.defaults.StrikeButton;
-import com.pixeldreamland.quillandroid.toolbar.defaults.UnderlineButton;
+import com.pixeldreamland.quillandroid.toolbar.defaults.*;
 
 import java.lang.reflect.Constructor;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /** Toolbar
  * @author jkidi(Jakub Kidacki)
  */
 public class Toolbar extends LinearLayout implements ToolbarElement.OnValueChangedListener {
-   public static final Format[] ALL_TYPES = new Format[] {
-      Format.BOLD,
-      Format.ITALIC,
-      Format.UNDERLINE,
-      Format.STRIKE
+   public static final ToolbarFormat[] ALL_TYPES = new ToolbarFormat[]{
+      new ToolbarFormat(Format.BOLD),
+      new ToolbarFormat(Format.ITALIC),
+      new ToolbarFormat(Format.UNDERLINE),
+      new ToolbarFormat(Format.STRIKE),
+      new ToolbarFormat(Format.FONT, new Object[] { "monospace", "sans-serif", "sans-serif-condensed", "sans-serif-medium"})
       // TODO add the rest
    };
 
    private HorizontalScrollView scrollView;
    private LinearLayout containerLayout;
-   private ToolbarRenderer renderer;
 
    private Map<Format, Class<? extends ToolbarElement>> formatClassMap;
-   private Format[] formats;
-   private Map<Format, ToolbarElement> toolbarElementMap;
+   private ToolbarFormat[] toolbarFormats;
+   private Map<Format, List<ToolbarElement>> toolbarElementMap;
 
    private Editor editor;
 
@@ -73,51 +69,48 @@ public class Toolbar extends LinearLayout implements ToolbarElement.OnValueChang
       inflate(getContext(), R.layout.toolbar_rich_editor, this);
       scrollView = (HorizontalScrollView) findViewById(R.id.scrollView);
       containerLayout = (LinearLayout) findViewById(R.id.containerLayout);
-      setRenderer(new DefaultToolbarRenderer());
-      formats = ALL_TYPES;
+      toolbarFormats = ALL_TYPES;
 
       formatClassMap = new HashMap<>();
       formatClassMap.put(Format.BOLD, BoldButton.class);
       formatClassMap.put(Format.ITALIC, ItalicButton.class);
       formatClassMap.put(Format.UNDERLINE, UnderlineButton.class);
       formatClassMap.put(Format.STRIKE, StrikeButton.class);
+      formatClassMap.put(Format.FONT, FontDropdownList.class);
 
       initElements();
-   }
-
-   public ToolbarRenderer getRenderer() {
-      return renderer;
-   }
-
-   public void setRenderer(ToolbarRenderer renderer) {
-      this.renderer = renderer;
    }
 
    private void initElements() {
       containerLayout.removeAllViews();
       toolbarElementMap = new HashMap<>();
 
-      for(Format format : formats) {
-         Class<? extends ToolbarElement> cls = formatClassMap.get(format);
+      for(ToolbarFormat toolbarFormat : toolbarFormats) {
+         Class<? extends ToolbarElement> cls = formatClassMap.get(toolbarFormat.getFormat());
          ToolbarElement element;
 
          try {
             Constructor<? extends ToolbarElement> constructor = cls.getConstructor(Context.class);
             element = constructor.newInstance(getContext());
-            element.setFormat(format);
+            element.setFormat(toolbarFormat.getFormat());
             element.setOnValueChangedListener(this);
 
-            // TODO: Get rid of the whole renderer thing
-            if(element instanceof ToolbarToggleButton) {
-               ToolbarToggleButton toggleButton = (ToolbarToggleButton) element;
-               toggleButton.setNormalState(renderer.getNormalState(format));
-               toggleButton.setCheckedState(renderer.getCheckedState(format));
-               toggleButton.setNormalColorFilter(renderer.getNormalColorFilter(format));
-               toggleButton.setCheckedColorFilter(renderer.getCheckedColorFilter(format));
+            if(toolbarFormat.getWhitelistValues() != null) {
+               element.setWhitelistValues(toolbarFormat.getWhitelistValues());
             }
 
             containerLayout.addView((View) element);
-            toolbarElementMap.put(format, element);
+
+            List<ToolbarElement> elementList = toolbarElementMap.get(toolbarFormat.getFormat());
+
+            if(elementList != null) {
+               elementList.add(element);
+            }
+            else {
+               elementList = new ArrayList<>();
+               elementList.add(element);
+               toolbarElementMap.put(toolbarFormat.getFormat(), elementList);
+            }
          }
          catch(Exception e) {
             e.printStackTrace();
@@ -126,8 +119,10 @@ public class Toolbar extends LinearLayout implements ToolbarElement.OnValueChang
    }
 
    private void resetButtons() {
-      for(ToolbarElement button : toolbarElementMap.values()) {
-         button.clear(false);
+      for(List<ToolbarElement> elementList : toolbarElementMap.values()) {
+         for(ToolbarElement element : elementList) {
+            element.clear(false);
+         }
       }
    }
 
@@ -151,11 +146,62 @@ public class Toolbar extends LinearLayout implements ToolbarElement.OnValueChang
                   resetButtons();
 
                   for(Format format : formatSet.getFormats()) {
-                     toolbarElementMap.get(format).setValue(formatSet.getValue(format), true);
+                     List<ToolbarElement> elementList = toolbarElementMap.get(format);
+                     Object value = formatSet.getValue(format);
+
+                     for(ToolbarElement element : elementList) {
+                        if(element.whitelistContains(value)) {
+                           element.setValue(value, true);
+                        }
+                     }
                   }
                }
             });
          }
       });
+
+      // register fonts
+      List<ToolbarElement> fontElements = toolbarElementMap.get(Format.FONT);
+      Set<String> fonts = new LinkedHashSet<>();
+
+      for(ToolbarElement element : fontElements) {
+         for(Object value : element.getWhitelistValues()) {
+            fonts.add((String) value);
+         }
+      }
+
+      if(fonts.size() > 0) {
+         editor.registerFonts(fonts.toArray(new String[fonts.size()]));
+      }
+   }
+
+   public static class ToolbarFormat {
+      private Format format;
+      private Object[] whitelistValues;
+
+      public ToolbarFormat(Format format) {
+         this.format = format;
+      }
+
+      public ToolbarFormat(Format format, Object[] whitelistValues) {
+         this.format = format;
+         this.whitelistValues = whitelistValues;
+      }
+
+      public Format getFormat() {
+         return format;
+      }
+
+      public void setFormat(Format format) {
+         this.format = format;
+      }
+
+      public Object[] getWhitelistValues() {
+         return whitelistValues;
+      }
+
+      public void setWhitelistValues(Object[] whitelistValues) {
+         this.whitelistValues = whitelistValues;
+      }
    }
 }

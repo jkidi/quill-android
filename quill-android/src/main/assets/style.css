@@ -30,6 +30,7 @@ body {
 }
 
 #editor {
+    font-size: 18px;
     display: table-cell;
     outline: 0px solid transparent;
     background-repeat: no-repeat;

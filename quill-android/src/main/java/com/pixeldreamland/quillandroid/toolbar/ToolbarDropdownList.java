@@ -1,13 +1,16 @@
 package com.pixeldreamland.quillandroid.toolbar;
 
 import android.content.Context;
-import android.widget.ListView;
+import android.widget.Spinner;
 import com.pixeldreamland.quillandroid.Format;
+import com.pixeldreamland.quillandroid.Util;
 
-/** ToolbarDropdownList
+/**
+ * ToolbarDropdownList
+ *
  * @author jkidi(Jakub Kidacki)
  */
-public abstract class ToolbarDropdownList extends ListView implements ToolbarElement {
+public abstract class ToolbarDropdownList extends Spinner implements ToolbarElement {
    private Format format;
    private Object value;
    private Object[] whitelistValues;
@@ -34,9 +37,15 @@ public abstract class ToolbarDropdownList extends ListView implements ToolbarEle
 
    @Override
    public void setValue(Object value, boolean emitEvent) {
+      boolean changed = !Util.equals(this.value, value);
+
       this.value = value;
 
-      if(emitEvent) {
+      if(changed) {
+         super.setSelection(whitelistIndexOf(value));
+      }
+
+      if(emitEvent && changed) {
          onValueChangedListener.onValueChanged(this, value);
       }
    }
@@ -57,5 +66,11 @@ public abstract class ToolbarDropdownList extends ListView implements ToolbarEle
    @Override
    public void setOnValueChangedListener(OnValueChangedListener onValueChangedListener) {
       this.onValueChangedListener = onValueChangedListener;
+   }
+
+   @Override
+   public void setSelection(int position) {
+      super.setSelection(position);
+      setValue(whitelistValues[position], true);
    }
 }
